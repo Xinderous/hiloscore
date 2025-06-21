@@ -1,0 +1,20 @@
+{
+  "name": "HiLo Punkte-Zähler",
+  "short_name": "HiLo",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a1120",
+  "theme_color": "#1e90ff",
+  "icons": [
+    {
+      "src": "hilo-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "hilo-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
