@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>HiLo Punkte-Zähler</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="HiLo Punkte">
+<link rel="apple-touch-icon" href="hilo-logo.png">
+  <style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #0a1120;
+    color: #f0f0f0;
+    padding: 20px;
+  }
+
+  h1, h2 {
+    color: #ffffff;
+    text-align: center;
+    margin-bottom: 1em;
+  }
+
+  label {
+    display: block;
+    margin: 10px 0 5px;
+  }
+
+  input[type='number'], input[type='text'] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: 200px;
+    background: #1e2a3a;
+    color: #f0f0f0;
+  }
+
+  button {
+    background-color: #1e90ff;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-weight: bold;
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  button:hover {
+    background-color: #339cff;
+  }
+
+  .spieler {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #1a1f2d;
+    border-radius: 8px;
+  }
+
+  .gewinner {
+    font-weight: bold;
+    color: #ffd700;
+    font-size: 1.2em;
+    margin-top: 15px;
+    text-align: center;
+  }
+
+  .unten {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin: 0 auto;
+    width: auto;
+    background: #111827;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 10px #0008;
+  }
+
+  th, td {
+    border: 1px solid #2c3e50;
+    padding: 12px 16px;
+    text-align: center;
+    white-space: nowrap;
+    color: #ffffff;
+  }
+
+  th {
+    background-color: #1f2937;
+    font-weight: bold;
+  }
+
+  td {
+    background-color: #111827;
+  }
+
+  .icon-inline {
+    height: 1em;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+
+  #punkteForm, #ergebnisse {
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  #spielerEingaben {
+    margin-bottom: 1em;
+  }
+  </style>
+</head>
+<body>
+<div style="text-align: center; margin-bottom: 10px;">
+  <img src="hilo-logo.png" alt="HiLo Logo" style="max-width: 300px; height: auto;">
+</div>
+<hr style="border: none; height: 1px; background-color: #1e90ff; margin-bottom: 20px;">
+<div id="seiteUebersicht" style="display: block;">
+  <!-- <h1>HiLo Punkte-Zähler</h1> -->
+  <div id="aktuelleSpieleBlock" style="display:none;">
+    <h2>Aktuelle Spiele</h2>
+    <ul id="spielAuswahl"></ul>
+  </div>
+  <div id="beendeteSpieleBlock" style="display:none;">
+    <h2>Beendete Spiele</h2>
+    <ul id="beendeteSpiele"></ul>
+  </div>
+  <button onclick="zeigeSetupSeite()">Neues Spiel starten</button>
+</div>
+
+<div id="seiteSetup" style="display: none;">
+  <h2>Neues Spiel einrichten</h2>
+  <label>Spielname: <input type="text" id="spielName" required></label>
+  <label>Anzahl Spieler: <input type="number" id="anzahlSpieler" min="2" max="6" value="4"></label>
+  <button onclick="namenEingeben()">Weiter</button>
+  <div id="namenEingabe"></div>
+  <button id="startButton" style="display:none" onclick="spielStarten()">Spiel starten</button>
+  <div class="unten"><button onclick="zeigeUebersicht()">Zurück zur Übersicht</button></div>
+</div>
+
+<div id="seiteSpiel" style="display: none;">
+  <h2 style="margin-top: 0;">Name des Spiels: <span id="aktuellerSpielName"></span></h2>
+  <div id="eingabeModus" style="display:none;">
+    <form id="punkteForm">
+      <div id="spielerEingaben"></div>
+      <button type="submit">Runde speichern</button>
+    </form>
+  </div>
+  <div id="anzeigeModus" style="display:none;">
+    <div id="spielerAnzeige"></div>
+  </div>
+  <h2>Ergebnisse</h2>
+  <div id="ergebnisse"></div>
+  <div class="unten"><button onclick="zeigeUebersicht()">Zurück zur Übersicht</button></div>
+</div>
+
+<script>
+let spiele = JSON.parse(localStorage.getItem('spiele')) || {};
+let spieler = [];
+let gesammtpunkte = {};
+let runde = 1;
+
+function zeigeUebersicht() {
+  location.reload();
+}
+
+function zeigeSetupSeite() {
+  document.getElementById('seiteUebersicht').style.display = 'none';
+  document.getElementById('seiteSetup').style.display = 'block';
+  document.getElementById('seiteSpiel').style.display = 'none';
+  document.getElementById('namenEingabe').innerHTML = '';
+  document.getElementById('startButton').style.display = 'none';
+}
+
+function zeigeSpielSeite() {
+  document.getElementById('seiteUebersicht').style.display = 'none';
+  document.getElementById('seiteSetup').style.display = 'none';
+  document.getElementById('seiteSpiel').style.display = 'block';
+}
+
+function neuesSpiel() {
+  zeigeSetupSeite();
+}
+
+function namenEingeben() {
+  console.log("namenEingeben aufgerufen");
+  const anzahl = parseInt(document.getElementById('anzahlSpieler').value);
+  console.log("Anzahl Spieler:", anzahl);
+  const namenEingabeDiv = document.getElementById('namenEingabe');
+  namenEingabeDiv.innerHTML = '';
+  spieler = [];
+  gesammtpunkte = {};
+  runde = 1;
+
+  for (let i = 0; i < anzahl; i++) {
+    console.log(`Eingabefeld für Spieler ${i + 1}`);
+    namenEingabeDiv.innerHTML += `
+      <div>
+        Name Spieler ${i + 1}: <input type="text" id="spielerName${i}" value="Spieler ${i + 1}" required>
+      </div>
+    `;
+  }
+  document.getElementById('startButton').style.display = 'inline-block';
+}
+
+function spielStarten() {
+  const spielName = document.getElementById('spielName').value.trim();
+  if (!spielName) {
+    alert('Der Spielname darf nicht leer sein.');
+    return;
+  }
+  const anzahl = parseInt(document.getElementById('anzahlSpieler').value);
+  if (anzahl < 2) {
+    alert('Es müssen mindestens 2 Spieler teilnehmen.');
+    return;
+  }
+  if (spiele[spielName]) {
+    alert('Ein Spiel mit diesem Namen existiert bereits.');
+    return;
+  }
+  console.log("spielStarten aufgerufen");
+  console.log("Anzahl Spieler beim Start:", anzahl);
+  const eingaben = document.getElementById('spielerEingaben');
+  if (!eingaben) {
+    alert('Fehler: Anzeigeelement für Spieler fehlt. Bitte Seite neu laden.');
+    return;
+  }
+  eingaben.innerHTML = '';
+  spieler = [];
+  gesammtpunkte = {};
+  runde = 1;
+
+  for (let i = 0; i < anzahl; i++) {
+    const name = document.getElementById(`spielerName${i}`).value;
+    console.log(`Spieler ${i + 1} Name:`, name);
+    spieler.push(name);
+    gesammtpunkte[name] = 0;
+
+    eingaben.innerHTML += `
+      <div class="spieler">
+        <label>${name}: <input type="number" name="punkte-${name}" required></label>
+        <label><input type="checkbox" name="offen-${name}"> Alle Karten offen</label>
+      </div>
+    `;
+  }
+
+  spiele[spielName] = { spieler, gesammtpunkte, runde, beendet: false };
+  localStorage.setItem('spiele', JSON.stringify(spiele));
+  ladeSpielListe();
+
+  document.getElementById('aktuellerSpielName').textContent = spielName;
+  zeigeSpielSeite();
+  document.getElementById('anzeigeModus').style.display = 'none';
+  document.getElementById('eingabeModus').style.display = 'block';
+  updateErgebnisse();
+}
+
+document.getElementById('punkteForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  console.log("Runde speichern gedrückt");
+  const form = new FormData(e.target);
+  let minPunkte = Infinity;
+  let punkteDieseRunde = {};
+  const aktuellesSpiel = Object.keys(spiele).find(n => spiele[n].spieler.join() === spieler.join() && !spiele[n].beendet);
+  let rundeErgebnis = {};
+
+  spieler.forEach(name => {
+    let punkte = parseInt(form.get(`punkte-${name}`));
+    console.log(`${name} Punkte:`, punkte);
+    punkteDieseRunde[name] = punkte;
+    if (!spiele[aktuellesSpiel].rundenverlauf) spiele[aktuellesSpiel].rundenverlauf = [];
+    if (punkte < minPunkte) minPunkte = punkte;
+  });
+
+  const offenMarkiert = spieler.filter(name => form.get(`offen-${name}`)).length;
+  if (offenMarkiert !== 1) {
+    alert('Genau ein Spieler muss "Alle Karten offen" markiert haben.');
+    return;
+  }
+
+  spieler.forEach(name => {
+    let punkte = punkteDieseRunde[name];
+    const offen = form.get(`offen-${name}`);
+    // PATCH: Ersetze die bisherige Offen-Regel durch neue Logik
+    if (offen) {
+      const allePunkte = spieler.map(sp => punkteDieseRunde[sp]);
+      const niedrigste = Math.min(...allePunkte);
+      const anzahlNiedrigste = allePunkte.filter(p => p === niedrigste).length;
+      if (punkteDieseRunde[name] > niedrigste || anzahlNiedrigste > 1) {
+        console.log(`${name} hatte Karten offen, Punkte werden verdoppelt.`);
+        punkte *= 2;
+      }
+    }
+    gesammtpunkte[name] += punkte;
+    rundeErgebnis[name] = punkte;
+    console.log(`${name} Gesamtpunkte:`, gesammtpunkte[name]);
+  });
+
+  spiele[aktuellesSpiel].rundenverlauf.push(rundeErgebnis);
+  
+  const offenSpieler = spieler.find(name => form.get(`offen-${name}`));
+  spiele[aktuellesSpiel].rundenverlauf[spiele[aktuellesSpiel].rundenverlauf.length - 1].offen = offenSpieler;
+
+  runde++;
+  if (aktuellesSpiel) {
+    spiele[aktuellesSpiel].spieler = spieler;
+    spiele[aktuellesSpiel].gesammtpunkte = gesammtpunkte;
+    spiele[aktuellesSpiel].runde = runde;
+    spiele[aktuellesSpiel].beendet = false;
+    localStorage.setItem('spiele', JSON.stringify(spiele));
+  }
+  updateErgebnisse();
+  e.target.reset();
+});
+
+function updateErgebnisse() {
+  console.log("updateErgebnisse aufgerufen");
+  const ausgabe = document.getElementById('ergebnisse');
+  ausgabe.innerHTML = '';
+
+  // Erstelle Tabellenkopf
+  const tabelle = document.createElement('table');
+  tabelle.style.borderCollapse = 'collapse';
+  tabelle.style.width = 'auto';
+  tabelle.style.tableLayout = 'auto';
+  tabelle.style.marginTop = '10px';
+
+  const thead = document.createElement('thead');
+  const kopfzeile = document.createElement('tr');
+  const kopfRunde = document.createElement('th');
+  kopfRunde.textContent = 'Runde';
+  kopfRunde.style.border = '1px solid #ccc';
+  kopfRunde.style.padding = '8px';
+  kopfzeile.appendChild(kopfRunde);
+
+  // Für Icons im Kopf: nur bei min. 1 Runde
+  const gespeicherteRunden = spiele[document.getElementById('aktuellerSpielName').textContent];
+  const rundenAnzahl = gespeicherteRunden && gespeicherteRunden.rundenverlauf ? gespeicherteRunden.rundenverlauf.length : 0;
+  const niedrigstePunkte = Math.min(...spieler.map(sp => gesammtpunkte[sp]));
+
+  spieler.forEach(name => {
+    const th = document.createElement('th');
+    th.style.border = '1px solid #ccc';
+    th.style.padding = '8px';
+    th.style.whiteSpace = 'nowrap';
+    th.innerHTML = name;
+    const punkte = gesammtpunkte[name];
+    if (rundenAnzahl > 0 && punkte >= 90) {
+      th.innerHTML += ' <img src="warnung.png" class="icon-inline">';
+    }
+    if (rundenAnzahl > 0 && punkte === niedrigstePunkte) {
+      th.innerHTML += ' <img src="krone.png" class="icon-inline">';
+    }
+    kopfzeile.appendChild(th);
+  });
+  thead.appendChild(kopfzeile);
+  tabelle.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  // Lese gespeicherte Rundendaten
+  const gespeicherteRunden2 = spiele[document.getElementById('aktuellerSpielName').textContent];
+  if (!gespeicherteRunden2 || !gespeicherteRunden2.rundenverlauf) gespeicherteRunden2.rundenverlauf = [];
+
+  gespeicherteRunden2.rundenverlauf.forEach((rundeDaten, index) => {
+    const tr = document.createElement('tr');
+    const tdRunde = document.createElement('td');
+    tdRunde.textContent = index + 1;
+    tdRunde.style.border = '1px solid #ccc';
+    tdRunde.style.padding = '8px';
+    tr.appendChild(tdRunde);
+    // Min-Punkte dieser Runde berechnen
+    const minPunkteRunde = Math.min(...spieler.map(sp => rundeDaten[sp] !== undefined ? rundeDaten[sp] : Infinity));
+    spieler.forEach(name => {
+      const td = document.createElement('td');
+      td.style.border = '1px solid #ccc';
+      td.style.padding = '8px';
+      const istOffen = rundeDaten.offen === name;
+      const istMin = rundeDaten[name] === minPunkteRunde;
+      // Färbung und Hervorhebung
+      if (istOffen) {
+        td.style.fontWeight = 'bold';
+        td.style.color = istMin ? 'green' : 'red';
+      }
+      let punkte = rundeDaten[name];
+      td.innerHTML = punkte !== undefined ? punkte : '';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // Ergebniszeile
+  const trSumme = document.createElement('tr');
+  const tdGesamt = document.createElement('td');
+  tdGesamt.textContent = 'Gesamt';
+  tdGesamt.style.fontWeight = 'bold';
+  tdGesamt.style.border = '1px solid #ccc';
+  tdGesamt.style.padding = '8px';
+  trSumme.appendChild(tdGesamt);
+
+  const rundenAnzahlSum = gespeicherteRunden2.rundenverlauf.length;
+  const niedrigstePunkteSum = Math.min(...spieler.map(name => gesammtpunkte[name]));
+  spieler.forEach(name => {
+    const td = document.createElement('td');
+    const punkte = gesammtpunkte[name];
+    td.innerHTML = punkte;
+    if (rundenAnzahlSum > 0 && punkte >= 90) {
+      td.innerHTML += ' <img src="warnung.png" class="icon-inline">';
+    }
+    if (rundenAnzahlSum > 0 && punkte === niedrigstePunkteSum) {
+      td.innerHTML += ' <img src="krone.png" class="icon-inline">';
+    }
+    td.style.fontWeight = 'bold';
+    td.style.border = '1px solid #ccc';
+    td.style.padding = '8px';
+    trSumme.appendChild(td);
+  });
+  tbody.appendChild(trSumme);
+  tabelle.appendChild(tbody);
+  ausgabe.appendChild(tabelle);
+
+  // Spielende prüfen
+  let spielBeendet = false;
+  let niedrigster = Infinity;
+  let gewinner = '';
+  spieler.forEach(name => {
+    const punkte = gesammtpunkte[name];
+    if (punkte < niedrigster) {
+      niedrigster = punkte;
+      gewinner = name;
+    }
+    if (punkte >= 99) spielBeendet = true;
+  });
+  if (spielBeendet) {
+    console.log("Spiel beendet. Gewinner:", gewinner);
+    ausgabe.innerHTML += `<p class="gewinner">Spielende! ${gewinner} hat gewonnen.</p>`;
+    const punkteForm = document.getElementById('punkteForm');
+    if (punkteForm) {
+      punkteForm.remove();
+    }
+    const aktuellesSpiel = Object.keys(spiele).find(n => spiele[n].spieler.join() === spieler.join() && !spiele[n].beendet);
+    if (aktuellesSpiel) {
+      spiele[aktuellesSpiel].beendet = true;
+      localStorage.setItem('spiele', JSON.stringify(spiele));
+    }
+  }
+}
+function ladeSpielListe() {
+  document.getElementById('seiteUebersicht').style.display = 'block';
+  const spielAuswahl = document.getElementById('spielAuswahl');
+  const beendeteAuswahl = document.getElementById('beendeteSpiele');
+  const aktuelleSpieleBlock = document.getElementById('aktuelleSpieleBlock');
+  const beendeteSpieleBlock = document.getElementById('beendeteSpieleBlock');
+  
+  spielAuswahl.innerHTML = '';
+  beendeteAuswahl.innerHTML = '';
+  let aktuelleExistieren = false;
+  let beendeteExistieren = false;
+
+  Object.keys(spiele).forEach(name => {
+    const li = document.createElement('li');
+    li.textContent = name;
+    li.style.cursor = 'pointer';
+    if (!spiele[name].beendet) {
+      li.onclick = () => ladeSpiel(name);
+      spielAuswahl.appendChild(li);
+      aktuelleExistieren = true;
+    } else {
+      li.onclick = () => zeigeErgebnisse(name);
+      beendeteAuswahl.appendChild(li);
+      beendeteExistieren = true;
+    }
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '❌';
+    deleteBtn.style.color = 'red';
+    deleteBtn.style.border = 'none';
+    deleteBtn.style.background = 'transparent';
+    deleteBtn.style.fontSize = '16px';
+    deleteBtn.style.cursor = 'pointer';
+    deleteBtn.style.marginLeft = '10px';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Möchtest du das Spiel "${name}" wirklich löschen?`)) {
+        delete spiele[name];
+        localStorage.setItem('spiele', JSON.stringify(spiele));
+        ladeSpielListe();
+      }
+    };
+    li.appendChild(deleteBtn);
+  });
+
+  aktuelleSpieleBlock.style.display = aktuelleExistieren ? 'block' : 'none';
+  beendeteSpieleBlock.style.display = beendeteExistieren ? 'block' : 'none';
+}
+
+function ladeSpiel(name) {
+  const daten = spiele[name];
+  if (!daten) return;
+
+  // Stelle sicher, dass die notwendigen DOM-Elemente existieren
+  const spielbereich = document.getElementById('seiteSpiel');
+  const eingabeModus = document.getElementById('eingabeModus');
+  const eingaben = document.getElementById('spielerEingaben');
+
+  if (!spielbereich || !eingabeModus || !eingaben) {
+    alert('Fehler: Spielbereich nicht vollständig geladen. Bitte lade die Seite neu.');
+    return;
+  }
+
+  spieler = daten.spieler;
+  gesammtpunkte = daten.gesammtpunkte;
+  runde = daten.runde;
+  console.log("Spiel wird geladen. Runde:", runde);
+
+  eingaben.innerHTML = '';
+  spieler.forEach(name => {
+    eingaben.innerHTML += `
+      <div class="spieler">
+        <label>${name}: <input type="number" name="punkte-${name}" required></label>
+        <label><input type="checkbox" name="offen-${name}"> Alle Karten offen</label>
+      </div>
+    `;
+  });
+
+  document.getElementById('aktuellerSpielName').textContent = name;
+  zeigeSpielSeite();
+  document.getElementById('anzeigeModus').style.display = 'none';
+  eingabeModus.style.display = 'block';
+  updateErgebnisse();
+}
+
+
+function zeigeErgebnisse(name) {
+  const daten = spiele[name];
+  if (!daten) return;
+  spieler = daten.spieler;
+  gesammtpunkte = daten.gesammtpunkte;
+  runde = daten.runde;
+
+  const anzeige = document.getElementById('spielerAnzeige');
+  anzeige.innerHTML = '';
+  spieler.forEach(name => {
+    anzeige.innerHTML += `
+      <div class="spieler">
+        <label>${name}: ${gesammtpunkte[name]} Punkte</label>
+      </div>
+    `;
+  });
+
+  document.getElementById('aktuellerSpielName').textContent = name;
+  zeigeSpielSeite();
+  document.getElementById('eingabeModus').style.display = 'none';
+  document.getElementById('anzeigeModus').style.display = 'block';
+  updateErgebnisse();
+  document.getElementById('ergebnisse').scrollIntoView({ behavior: 'smooth' });
+}
+
+window.onload = ladeSpielListe;
+</script>
+
+<hr style="border: none; height: 1px; background-color: #1e90ff; margin-top: 40px; margin-bottom: 10px;">
+<div style="text-align: center; margin-bottom: 20px;">
+  <a href="spielregeln.html"><button>Spielregeln</button></a>
+</div>
+
+</body>
+</html>
